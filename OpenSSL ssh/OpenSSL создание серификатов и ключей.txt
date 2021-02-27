@@ -1,0 +1,90 @@
+y:k9Qxc09d4m2604IS
+s:k9Qxc09d4m2604ISlo33kka5
+
+Как создать openssl ключи?
+
+#установка OpenSSL:
+apt-get install openssl
+
+#генерирую файл со случайным содержимым
+openssl genrsa -out private-rsa.key.pem 2048
+
+#создать .crt
+openssl req -x509 -nodes -newkey rsa:2048 -keyout privateKey.key -out certificate.crt
+
+#При выполнении команды будут заданы следующие вопросы:
+
+Country Name (2 letter code) [AU]:RU
+State or Province Name (full name) [Some-State]:Russia
+Locality Name (eg, city) []:Moscow
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:site.ru    
+Organizational Unit Name (eg, section) []:site.ru 
+Common Name (e.g. server FQDN or YOUR name) []:
+Email Address []:
+
+#После чего будут созданы два файла:
+#certificate.crt и privateKey.key — приватный ключ
+
+#Генерируем .pfx сертификат на основе .crt и .key
+openssl pkcs12 -export -in certificate.crt -inkey privateKey.key -out certificate.pfx
+
+#P.S. sh скрипт для создания сертификатов (.pem .pfx .crt) и ключей (public.key, secret.key)
+
+#!/bin/sh
+openssl req -x509 -nodes -newkey rsa:1024 -keyout privateKey.key -out certificate.crt
+openssl pkcs12 -export -in certificate.crt -inkey privateKey.key -out certificate.pfx
+openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
+openssl rsa -in certificate.pem -pubout -outform DER -out public.key 
+(выгрузить ключ в формате, совместимом с openssh*: openssl rsa -in certificate.pem -pubout > public.key)
+openssl rsa -inform pem -in certificate.pem -outform der -out secret.key
+
+#Созданные файлы с расширением pfx, crt, pem — это сертификаты которые содержат в себе как ключ так и сертификат. Ключ -nodes указывает не создавать секретную фразу для шифрования секретного ключа.
+#Команда pkcs12 позволяет создавать сертификаты для использования в MS Outlook, Internet Explorer.
+#Если не указывать параметр -nodes, то при создании сертификата будет запрошен пароль, который затем будет использован для шифрования ключа. Подробнее об этом можно прочитать на сайте openSSL: 
+
+
+#ssh аутентификации по сертификату private public key
+#Вводим следующие команды для создания директории .ssh и файла ключа authorized_keys: 
+
+mkdir ~/.ssh 
+chmod 0700 ~/.ssh 
+rm -f ~/.ssh/authorized_keys (remove: пересоздать ключь, если он уже существует) 
+touch ~/.ssh/authorized_keys 
+chmod 0644 ~/.ssh/authorized_keys 
+
+
+#Теперь нужно содержимое ключа ssh-public.key вставить в ~/.ssh/authorized_keys
+
+cat ssh-public.key > ~/.ssh/authorized_keys
+
+#Важно. Открытый ключ (public.key) для вставки в authorized_keys обязательно должен быть в формате OpenSSH (начинаться с ssh-rsa AAAA…).
+#Для конвертации в формат OpenSSH используется команда: 
+
+ssh-keygen -f public.key -i -m PKCS8 > ssh-public.key
+
+
+
+#Запретить аутентификацию по паролю и пользователю root, оставить только по сертификатам.
+#В файле /etc/ssh/sshd_config изменить: 
+PasswordAuthentication no 
+PermitEmptyPasswords no 
+
+#После выполнить команду перезагрузки sshd:
+service sshd restart
+
+#Команда для смены пароля root: 
+passwd 
+
+#Команда для просмотра пользователей:
+cat /etc/passwd
+
+#последние подключения к серверу:
+last 
+ 
+#Логи ошибок хранятся в каталоге /var/log
+#Журнал аутентификации /var/log/auth.log
+
+#Установка CURL:
+apt-get update
+apt-get install curl libcurl3 libcurl3-dev php5-curl php5-mcrypt
+/etc/init.d/apache2 restart

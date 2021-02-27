@@ -1,0 +1,6 @@
+требования:
+CentOS  Red Hut Linux
+настроенный apache под php 7
+Для корректной работы необходимо установить расширение PECL ssh2.
+Добавить в PATH: /opt/cprocsp/bin/amd64/
+Добавить stream_get_contents по аналогии с примером в: https://www.php.net/manual/en/function.ssh2-exec.php
